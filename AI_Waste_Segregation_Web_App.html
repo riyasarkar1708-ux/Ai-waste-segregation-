@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Waste Segregation</title>
+<style>
+:root{--ink:#20332b;--green:#2f7656;--pale:#edf6ef;--cream:#fffdf7;--line:#d9e6dc}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:var(--ink);background:linear-gradient(135deg,#edf6ef,#fffdf7)}
+.wrap{max-width:760px;margin:auto;padding:24px 16px 40px}header{text-align:center;padding:24px 12px 18px}.leaf{font-size:42px}
+h1{margin:8px 0;font-size:clamp(27px,5vw,38px)}header p{margin:8px auto;max-width:540px;line-height:1.5}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;margin:16px 0;box-shadow:0 8px 24px #20332b0c}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}button,.upload{border:0;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer}
+button{background:var(--green);color:white}button:disabled{opacity:.55;cursor:not-allowed}.upload{display:inline-block;background:var(--pale);color:var(--green);border:1px solid var(--line)}input[type=file]{display:none}
+#preview{display:none;max-width:100%;max-height:330px;object-fit:contain;border-radius:14px;margin-top:16px;border:1px solid var(--line)}
+#status{color:#53665b;line-height:1.5;margin-top:12px}#results{margin-top:18px}.prediction{margin:12px 0}
+.prediction-head{display:flex;justify-content:space-between;gap:12px;font-size:14px;margin-bottom:6px}.bar{height:10px;background:#e8eee9;border-radius:999px;overflow:hidden}
+.fill{height:100%;width:0;background:var(--green);border-radius:999px;transition:width .25s}#best{font-size:21px;font-weight:700;color:var(--green);margin:10px 0}
+.tip{background:var(--pale);border-radius:12px;padding:14px;line-height:1.5}.classes{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px}
+.class-chip{background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}footer{text-align:center;color:#63736a;font-size:12px;line-height:1.5;padding:12px}.small{font-size:13px;color:#63736a;line-height:1.5}
+</style></head><body><div class="wrap">
+<header><div class="leaf">♻️</div><h1>AI Waste Segregation</h1><p>Upload a picture of an item to estimate whether it is organic, plastic, paper, metal, or electronic waste.</p></header>
+<section class="card"><h2>1. Choose a waste image</h2><div class="row"><label class="upload" for="imageUpload">Choose Image</label><input id="imageUpload" type="file" accept="image/*"><button id="classifyBtn" disabled>Classify Waste</button></div><img id="preview" alt="Selected waste image preview"><div id="status">Add your trained Teachable Machine model URL to this file, then choose an image.</div></section>
+<section class="card"><h2>2. Prediction</h2><div id="best">No prediction yet</div><div id="results"></div><div id="tip" class="tip">Your disposal tip will appear here after classification.</div><p class="small">Educational prototype only. Predictions can be wrong. Follow local waste rules; take e-waste to an authorised collection or recycling service.</p></section>
+<section class="card"><h2>Waste categories</h2><div class="classes"><div class="class-chip">🍃 Organic</div><div class="class-chip">♻️ Plastic</div><div class="class-chip">📄 Paper</div><div class="class-chip">🔩 Metal</div><div class="class-chip">💻 E-waste</div></div></section>
+<footer>Class 12 AI Project · AI-Based Waste Segregation System</footer></div>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script>
+const MODEL_URL="PASTE_YOUR_TEACHABLE_MACHINE_MODEL_URL_HERE/";
+let model=null,selectedImage=null;
+const upload=document.getElementById("imageUpload"),preview=document.getElementById("preview"),button=document.getElementById("classifyBtn"),statusEl=document.getElementById("status"),bestEl=document.getElementById("best"),resultsEl=document.getElementById("results"),tipEl=document.getElementById("tip");
+function getTip(label){const s=label.toLowerCase().replace(/[^a-z]/g,"");if(s.includes("organic"))return"Put suitable food scraps and garden waste in the organic-waste or compost stream, according to local rules.";if(s.includes("plastic"))return"Empty and rinse recyclable plastic containers where required. Check local rules; not all plastics are recyclable.";if(s.includes("paper"))return"Keep paper and cardboard clean and dry for recycling. Food-soiled paper may need a different route.";if(s.includes("metal"))return"Follow local collection guidance for recyclable metal. Be careful with sharp edges.";if(s.includes("ewaste")||s.includes("electronic"))return"Do not put electronic waste in ordinary household bins. Use an authorised e-waste collection or recycling service.";return"Check the item's material and follow local waste-segregation rules."}
+async function loadModel(){if(!window.tmImage)throw Error("The model library did not load. Check your internet connection.");if(MODEL_URL.includes("PASTE_YOUR"))throw Error("Model URL missing. Paste your Teachable Machine model URL into MODEL_URL in this HTML file.");const base=MODEL_URL.endsWith("/")?MODEL_URL:MODEL_URL+"/";model=await tmImage.load(base+"model.json",base+"metadata.json")}
+upload.addEventListener("change",e=>{const file=e.target.files&&e.target.files[0];if(!file)return;if(!file.type.startsWith("image/")){statusEl.textContent="Please select an image file.";return}selectedImage=new Image();selectedImage.onload=()=>{preview.src=selectedImage.src;preview.style.display="block";button.disabled=false;statusEl.textContent="Image ready. Press Classify Waste.";bestEl.textContent="Ready to classify";resultsEl.innerHTML="";tipEl.textContent="Your disposal tip will appear here after classification."};selectedImage.onerror=()=>statusEl.textContent="Could not open that image. Try another file.";selectedImage.src=URL.createObjectURL(file)});
+button.addEventListener("click",async()=>{if(!selectedImage)return;button.disabled=true;statusEl.textContent="Loading model and analysing image…";bestEl.textContent="Working…";resultsEl.innerHTML="";try{if(!model)await loadModel();const predictions=await model.predict(selectedImage);predictions.sort((a,b)=>b.probability-a.probability);const top=predictions[0];bestEl.textContent=top.className+" ("+(top.probability*100).toFixed(1)+"% confidence)";resultsEl.innerHTML=predictions.map(p=>'<div class="prediction"><div class="prediction-head"><span>'+escapeHtml(p.className)+'</span><strong>'+(p.probability*100).toFixed(1)+'%</strong></div><div class="bar"><div class="fill" style="width:'+Math.max(0,Math.min(100,p.probability*100))+'%"></div></div></div>').join("");tipEl.textContent=getTip(top.className);statusEl.textContent="Prediction complete. This is an estimate, not a guarantee."}catch(err){bestEl.textContent="Could not classify image";statusEl.textContent=err.message||"Something went wrong. Check model URL and internet connection.";tipEl.textContent="Check that the model URL is correct and the model has the five expected classes."}finally{button.disabled=false}});
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+</script></body></html>

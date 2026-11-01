@@ -1,3 +1,5 @@
+import os
+import gdown
 import streamlit as st
 import tensorflow as tf
 import numpy as np
@@ -8,6 +10,9 @@ st.set_page_config(
     page_icon="♻️",
     layout="wide"
 )
+
+MODEL_PATH = "Waste_Segregation_Model.keras"
+DRIVE_ID = "1Yefyp0re81U92h5JaJMOTDK8QdNoQiy1"
 
 CLASS_NAMES = ["E-Waste", "Metal", "Organic", "Paper", "Plastic"]
 
@@ -21,8 +26,16 @@ TIPS = {
 
 @st.cache_resource
 def load_model():
+    if not os.path.exists(MODEL_PATH):
+        url = f"https://drive.google.com/uc?id={DRIVE_ID}"
+        gdown.download(url, MODEL_PATH, quiet=False, fuzzy=True)
+
+    if not os.path.exists(MODEL_PATH):
+        st.error("Could not download the model. Check Google Drive sharing settings.")
+        st.stop()
+
     return tf.keras.models.load_model(
-        "Waste_Segregation_Model.keras",
+        MODEL_PATH,
         compile=False
     )
 
@@ -39,14 +52,15 @@ if uploaded:
     st.image(image, caption="Uploaded image", width=350)
 
     if st.button("Classify Waste"):
-        model = load_model()
-        resized = image.resize((160, 160))
-        array = np.array(resized).astype("float32")
-        array = np.expand_dims(array, axis=0)
+        with st.spinner("Analysing image..."):
+            model = load_model()
+            resized = image.resize((160, 160))
+            array = np.array(resized).astype("float32")
+            array = np.expand_dims(array, axis=0)
 
-        predictions = model.predict(array, verbose=0)[0]
-        index = int(np.argmax(predictions))
-        category = CLASS_NAMES[index]
+            predictions = model.predict(array, verbose=0)[0]
+            index = int(np.argmax(predictions))
+            category = CLASS_NAMES[index]
 
         st.success(f"Predicted category: {category}")
         st.metric("Model confidence", f"{predictions[index]*100:.2f}%")

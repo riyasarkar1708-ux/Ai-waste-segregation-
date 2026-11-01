@@ -28,7 +28,7 @@ TIPS = {
 def load_model():
     if not os.path.exists(MODEL_PATH):
         url = f"https://drive.google.com/uc?id={DRIVE_ID}"
-        gdown.download(url, MODEL_PATH, quiet=False, fuzzy=True)
+        gdown.download(url, MODEL_PATH, quiet=False)
 
     if not os.path.exists(MODEL_PATH):
         st.error("Could not download the model. Check Google Drive sharing settings.")
